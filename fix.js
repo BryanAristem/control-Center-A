@@ -1,4 +1,4 @@
-/* ===== CORRECTIF IA Aristem ===== */
+ /* ===== CORRECTIF IA Aristem ===== */
 (function(){
  const BAD=/openrouter\.ai\/(workspaces|settings|keys|models)|console\.groq\.com|aistudio\.google\.com/i;
 
@@ -24,12 +24,16 @@
   catch(e){throw new Error('Impossible de joindre '+p.name+' ('+new URL(url).host+"). Vérifie l'URL, ta connexion ou le domaine autorisé.")}
   const t=await r.text();let d;
   try{d=JSON.parse(t)}catch(e){throw new Error(p.name+' a répondu autre chose que du JSON (HTTP '+r.status+"). L'URL est probablement une page web.")}
-  if(!r.ok){const m=d.error&&(d.error.message||d.error);throw new Error(typeof m==='string'?m:'HTTP '+r.status)}
+  if(!r.ok){const e=Array.isArray(d)?(d[0]&&d[0].error):d.error;const m=e&&(typeof e==='string'?e:e.message);throw new Error(m||('HTTP '+r.status+' '+t.slice(0,200)))}
   return d;
  };
 
+ /* Fusionne les messages consécutifs du même rôle (certaines API refusent sinon) */
+ const norm=a=>{const out=[];for(const x of a){const l=out[out.length-1];if(l&&l.role===x.role)l.text+='\n'+x.text;else out.push({role:x.role,text:x.text})}return out};
+
  /* 3) Nouvelle fonction ask (remplace l'ancienne) */
  window.ask=async function(pid,msgs,o={}){
+  msgs=norm(msgs);
   const p=prov(pid);if(!p.key)throw new Error('Ajoute ta clé API dans Réglages pour '+p.name);
   if(!p.model)throw new Error('Ajoute un modèle pour '+p.name+' dans Réglages');
   const key=p.key.trim();
